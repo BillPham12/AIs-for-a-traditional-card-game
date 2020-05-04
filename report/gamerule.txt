@@ -1,0 +1,17 @@
+There are five valid plays in the general game rules:
+1.	Single Card
+It could be any cards from 3 to 2, such as 3 of spades, 4 of clubs, etc.
+2.	Pair
+It just the combination of 2 cards have the same rank such as: (3S, 3C), etc.
+3.	Triple
+It just the combination of 3 cards have the same rank such as: (3S, 3C, 3H), etc.
+
+4.	Sequences
+Sometimes the sequences can be called as straights such as: (3, 4, 5, 6, 7); (J, Q, K, A). However, card 2 is not allowed to use to combine any sequence. Card 2 (called “pig”) is only allowed to play as a single card, pair or triple and four of a kind.
+5.	Four of a kind
+Four of a kind is four cards have the same rank but different suits. Such as:
+5S, 5C, 5D, 5H. Four of a kind can be used to punish double sequence of 3 or one single pig.
+
+6.	Double sequences (or some people call it as “bomb”)
+Double sequences are three or more pairs combined together to form up a sequence such as: (3C,3H), (4C,4D), (5C,5H). Double sequences are used to punish pigs. Double sequences of 3, 4, 5, 6 can be used to punish 1, 2, 3, 4 (single, pair, triple and four of a kind) pigs respectively.
+The goal of players in the game is to play all the cards in their hands, when there is only one player with card on his/her hand the game ends. Unlike other card games, the rank of the cards in increasing order is 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K, A, 2, that means 2 is the highest card.

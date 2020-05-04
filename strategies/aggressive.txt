@@ -1,0 +1,37 @@
+Aggressive:
+Input = current_meld, player_hand
+output = meld
+
+function play(current_meld, player_hand):
+
+hot_guns, sequences, pairs_triples, single_cards = optimize(player_hand)
+
+if current_meld is null then:
+  return Min(sequences, pairs, triples, single cards)
+If current_meld is pig or pigs:
+  If can punish then return x = Min(hot_guns,current_meld) if x != null
+  else: return null
+if current_meld is single card:
+    return if x = Min(single_cards, current_meld) if x != null
+    else:
+      return if x = find_efficiently(sequences,current_meld) if x != null
+      (not breaking sequences of 3 and 5 because it will create 2 to 4 trash cards,
+      it doesn't return the smallest one!! but return the efficient card, so that
+      non sequences is broken down into trash cards)
+      else:
+        return x = Min(pairs_triples,current_meld) if x != null
+        else return null
+if current_meld is pair:
+    return x = Min(pairs_triples,current_meld) if x != null
+if current_meld is sequences:
+    return x =  efficient_min(sequences,current_meld) if x != null
+    (that means without breaking any sequences into trash cards. Ex:
+    current_meld's size = 3; but sequences has j,k, which j's size = 4
+    and k's size = 5 --> return null)
+
+    if x = null:
+    return y = Aggressively_min(sequences,current_meld) if y != null
+    (that means allowing sequences break into trash cards. Ex:
+    current_meld's size = 3; but sequences has j,k, which j's size = 4
+    and k's size = 5 --> return j)
+    else return null

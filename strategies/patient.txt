@@ -1,0 +1,44 @@
+Patient:
+Input = current_meld, player_hand
+output = meld
+
+low rank cards, pairs are melds having rank less than 10
+low rank sequences are melds having the rank of the smallest element less than 10.
+
+function play(current_meld, player_hand):
+hot_guns, sequences, pairs_triples, single_cards = optimize(player_hand)
+
+if current_meld is null then:
+  return Min(sequences, pairs, triples, single cards)
+If current_meld is pig or pigs:
+  If can punish then return x = Min(hot_guns,current_meld) if x != null
+  else: return null
+
+If some body has played more than 7 cards or robot has less than 6 cards on its hand:
+    return aggressive(player_hand)
+     that means play aggressively
+
+if current_meld is single card and low rank card:
+    return if x = Min(single_cards, current_meld) if x != null and x is low rank card
+    else:
+      return if x = find_efficiently(sequences,current_meld) if x != null and x is low rank card
+      (not breaking sequences of 3 and 5 because it will create 2 to 4 trash cards,
+      it doesn't return the smallest one!! but return the efficient card, so that
+      non sequences is broken down into trash cards)
+      else:
+        return x = Min(pairs_triples,current_meld) if x != null and x is low rank card
+        else return null
+if current_meld is pair and low rank pair:
+    return x = Min(pairs_triples,current_meld) if x != null and x is low rank pair
+if current_meld is sequences and low rank sequences:
+    return x =  efficient_min(sequences,current_meld) if x != null and x is low rank sequences
+    (that means without breaking any sequences into trash cards. Ex:
+    current_meld's size = 3; but sequences has j,k, which j's size = 4
+    and k's size = 5 --> return null)
+
+    if x = null:
+    return y = Aggressively_min(sequences,current_meld) if x != null and y is low rank sequences
+    (that means allowing sequences break into trash cards. Ex:
+    current_meld's size = 3; but sequences has j,k, which j's size = 4
+    and k's size = 5 --> return j)
+    else return null

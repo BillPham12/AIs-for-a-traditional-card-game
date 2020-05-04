@@ -1,0 +1,603 @@
+package robotStrategy;
+
+import client_server.Client;
+import game.Deck;
+
+import java.lang.reflect.Array;
+import java.util.*;
+
+public class Rational_Patient implements RobotStrategy {
+    private static ArrayList<String> hand;
+    private static String[] current_meld;
+    private support support_functions = new support();
+    private  boolean potential = false;
+    private int strategy = 0;
+    private List<String> winning_meld ;
+    private Map<String,ArrayList> players_data;
+    private String current_player;
+    private int card_left = 0;
+    private List<ArrayList<String>> knowledge;
+    private int way = 0;
+    @Override
+    public String[] play(Client c) {
+        knowledge = new ArrayList<ArrayList<String>>();
+        current_player = c.getTurns().peek();
+        winning_meld = new ArrayList<>();
+        hand = new ArrayList<>(c.getHand());
+        players_data = new HashMap<>(c.getListOfThePlayer());
+        upgradeKnowledge(players_data);
+
+
+        Collections.sort(hand, new sort());
+        // Decide to play for new turn
+        if (c.getCurrentMeld().getValue() == null){
+          //  System.out.println("1 is call");
+            checkForPotentialWin(c);
+           // System.out.println(winning_meld);
+            if (winning_meld != null && potential && winning_meld.size() > 0 && winning_meld.size() < 4) {
+                boolean potential_threads = false; String s = null;
+                if(winning_meld.size() > 3)
+                    Collections.sort(winning_meld,new sort());
+
+                if(winning_meld.size() == 1)
+                    {s = winning_meld.get(0);}
+                else{
+                loop: for(Map.Entry<String,ArrayList> player: players_data.entrySet()) {
+                    int card_left = 13 - player.getValue().size();
+                    if (card_left == 2) {
+                        boolean allpairs = allIsPair(winning_meld);
+                        if(allpairs && winning_meld.get(winning_meld.size()-1).length() == 2){
+                                s = winning_meld.get(winning_meld.size()-1);
+
+                            String first_card = winning_meld.get(0).substring(0,2);
+                            if (!support_functions.compareSingleCard(winning_meld.get(0).substring(0,2),s))
+                                   s = first_card;
+
+                        }
+                        else{for (String meld : winning_meld) {
+                            if (meld.length() / 2 == card_left) {
+                                s = meld.substring(0, 2);
+                                potential_threads = true;
+                                break loop;
+                            } else {
+                                s = meld;
+                                potential_threads = true;
+                                break loop;
+                            }
+                        }
+                        }
+                    }
+                    // We know that the current case is 2-4 pairs and the others having 2 card lefts
+                    if (potential_threads = false && winning_meld.get(0).length() / 2 == 13 - player.getValue().size()) {
+                        int index = winning_meld.size() / 2;
+                        if (index != 0) {
+                            potential_threads = true;
+                            s = winning_meld.get(index).substring(0, 2);
+                        }
+                    }
+                }
+                }
+                //special case
+                if ( s!= null){
+                    String[] out = new String[s.length()/2];
+                    int i =0;
+                    while(s.length() > 0){
+                        out[i] = s.substring(0,2); i++;
+                        c.getHand().remove(s.substring(0,2));
+                        s = s.substring(2);
+                    }
+                    return out;
+                }
+                // if no need to handle
+                int number_of_single_card = 0;
+                List<String> cards = new ArrayList<>();
+                for (String str: winning_meld){
+                    if(str.length() == 2) {number_of_single_card++;
+                        cards.add(str);
+                    }}
+                if (number_of_single_card >= 2){
+                    String[] out = new String[]{cards.get(0)};
+                    c.getHand().remove(cards.get(0));
+                    return out;
+                }
+                //Collections.sort(winning_meld,new sort());
+                if(!potential_threads && number_of_single_card < 2){
+                   // System.out.println(winning_meld);
+                    if(winning_meld.size() == 3 && winning_meld.get(0).length() == winning_meld.get(1).length()
+                            && (isBestPair(knowledge,winning_meld.get(1)) || isBestSequences(knowledge,winning_meld.get(1))) ) {
+                        s = winning_meld.remove(0);
+                    }
+                    else if (winning_meld.size() == 2)
+                    { if ((isBestPair(knowledge,winning_meld.get(0)) || isBestSequences(knowledge,winning_meld.get(0))))
+                            s = winning_meld.remove(0);
+                      else if ((isBestPair(knowledge,winning_meld.get(1)) || isBestSequences(knowledge,winning_meld.get(1))))
+                            s = winning_meld.remove(1);
+                      else {Collections.sort(winning_meld,new sort());
+                        s = winning_meld.remove(0);}
+                    }
+                    else {
+                        Collections.sort(winning_meld,new sort());
+                        s = winning_meld.remove(0);
+                    }
+                }
+              //  System.out.println(s);
+                String[] out = new String[s.length()/2];
+                int i =0;
+                while(s.length() > 0){
+                    out[i] = s.substring(0,2); i++;
+                    c.getHand().remove(s.substring(0,2));
+                    s = s.substring(2);
+                }
+                return out;
+            }
+            else{
+               // System.out.println("2 is call");
+                hand = new ArrayList<>(c.getHand());
+                Collections.sort(hand, new sort());
+                return playTheSmallestMeld(c); }
+        }
+        // The competitive turn
+        else{
+            current_meld = Arrays.copyOf(c.getCurrentMeld().getValue(),c.getCurrentMeld().getValue().length);
+            // If you don't have to play then just pass the turn
+            if(!HaveToPlay(c,current_meld))
+                return new String[]{"00"};
+
+
+            // sequences, pairs and singles
+            Arrays.sort(current_meld, new sort());
+            Collections.sort(hand, new sort());
+            // Handling sequence
+            ArrayList<String> sample = new ArrayList<>(hand);
+            List<String> potential_sequences= null;
+            List<String> potential_pairs = null;
+            changeToWin();
+            if (way == 1){
+                potential_sequences = support_functions.findEfficientlyAllSequences(sample);
+                for (String str: potential_sequences){
+                    while(str.length() != 0){
+                        sample.remove(str.substring(0,2));
+                        str = str.substring(2);
+                    }
+                }
+                potential_pairs = support_functions.findPairsAndTriples(sample);}
+            else if (way == 2){
+                potential_pairs = support_functions.findPairsAndTriples(sample);
+                for (String str: potential_pairs){
+                    while(str.length() != 0){
+                        sample.remove(str.substring(0,2));
+                        str = str.substring(2);
+                    }
+                }
+                potential_sequences = support_functions.findEfficientlyAllSequences(sample);}
+            else return new String[]{"00"};
+
+            if(current_player.equals(c.getSpecialEnemy())&& c.getNumber_of_player() > 2){
+                if(!changeToWin())
+                    return new String[]{"00"};
+            }
+
+            if(support_functions.isSequence(current_meld)){
+                // find potential sequences
+                for(int i=0; i < potential_sequences.size();i++){
+                    if(support_functions.checkPotentialMeld(potential_sequences.get(i),current_meld)){
+                        String [] output = support_functions.convert(potential_sequences.get(i));
+                        for(String s: output)
+                            c.getHand().remove(s);
+                        return output;}
+                }
+                //playing aggressive.
+                potential_sequences.clear();
+                potential_sequences = support_functions.findASequences(new ArrayList<>(hand),current_meld.length);
+                for(int i=0; i < potential_sequences.size();i++){
+                    if(support_functions.checkSequences(potential_sequences.get(i),current_meld)){
+                        if(potential_sequences.get(i).length()/2 == 5 && current_meld.length == 3){
+                            String s = potential_sequences.get(i).substring(4,6);
+                            int index = hand.indexOf(s);
+                            if(hand.get(index +1).charAt(0) != s.charAt(0) && hand.get(index -1).charAt(0) != s.charAt(0) )
+                                return new String[]{"00"};
+                        }
+                        String [] output = support_functions.convertAggressively(potential_sequences.get(i),current_meld);
+                        for(String s: output)
+                            c.getHand().remove(s);
+                        return output;}
+                }
+                return new String[]{"00"};
+            }
+            // Handling pair
+            else if (support_functions.isPairTriple(current_meld)){
+                if(current_player.equals(c.getSpecialEnemy()) && c.getNumber_of_player() > 2){
+                    if(!changeToWin())
+                        return new String[]{"00"};
+                }
+
+                // find potential pairs
+                for(int i=0; i < potential_pairs.size();i++){
+                    if(support_functions.checkPotentialMeld(potential_pairs.get(i),current_meld)){
+                        String [] output = support_functions.convert(potential_pairs.get(i));
+                        for(String s: output)
+                            c.getHand().remove(s);
+                        return output;
+                    }
+                }
+                // find aggressively pairs
+                potential_pairs = support_functions.findPairsAndTriples(hand);
+                // find potential pairs
+                for(int i=0; i < potential_pairs.size();i++){
+                    if(support_functions.aggresivelyCheckPotentialMeld(potential_pairs.get(i),current_meld)){
+                        String [] output = support_functions.convertAggressivelyPair(potential_pairs.get(i),current_meld.length);
+                        for(String s: output)
+                            c.getHand().remove(s);
+                        return output;
+                    }
+                }
+                return new String[]{"00"};
+            }
+            // Handling a card
+            else{
+                // list contains single cards after find all seqs and pairs
+                List<String> first_Strategy =  support_functions.findAllSequencesThenPairs(new ArrayList<>(hand));
+                // list contains single cards after find all pairs and seqs
+                List<String> second_Strategy = support_functions.findAllPairsThenSequences(new ArrayList<>(hand));
+                List <String> remove_cards;
+                // that means second_strategy is better
+                int strategy = 0;
+                if(first_Strategy.size() > second_Strategy.size()) {remove_cards = second_Strategy;strategy = 2;}
+                else {remove_cards = first_Strategy; strategy = 1;}
+                for(String card: remove_cards){
+                    if(current_meld.length == 0) {
+                        c.getHand().remove(card);
+                        return new String[]{card};
+                    }
+                    if(support_functions.compareSingleCard(card,current_meld[0])){
+                        c.getHand().remove(card);
+                        return new String[]{card};
+                    }
+                }
+                // If the current player is special player then tend not to play aggressively
+                if(c.getSpecialEnemy().equals(current_player) && remove_cards.size() <2){
+                    if(!changeToWin())
+                        return new String[]{"00"};
+                }
+                //
+
+                potential_sequences = support_functions.findEfficientlyAllSequences(new ArrayList<>(hand));
+                for(int i =0; i < potential_sequences.size();i++){
+                    String out =support_functions.findASingleCardInAMeld(potential_sequences.get(i),current_meld[0]);
+                    if( out != null){
+                        c.getHand().remove(out);
+                        return new String[] {out};}
+                }
+                potential_pairs = support_functions.findPairsAndTriples(new ArrayList<>(hand));
+                for(int i =0; i < potential_pairs.size();i++){
+                    String out =support_functions.findASingleCardInAMeld(potential_pairs.get(i),current_meld[0]);
+                    if(out != null){
+                        c.getHand().remove(out);
+                        return new String[] {out};}
+                }
+                return new String[]{"00"};
+
+            }
+
+        }
+    }
+
+    private boolean changeToWin() {
+        way = 0;
+        ArrayList<String> first_sample = new ArrayList<>(hand);
+        ArrayList<String> second_sample = new ArrayList<>(hand);
+        List<String> first_potential_sequences = support_functions.findEfficientlyAllSequences(first_sample);
+        List<String> second_potential_pairs= support_functions.findPairsAndTriples(second_sample);
+
+        for (String str: first_potential_sequences){
+            while(str.length() != 0){
+                first_sample.remove(str.substring(0,2));
+                str = str.substring(2);
+            }
+        }
+
+        for (String str: second_potential_pairs){
+            while(str.length() != 0){
+                second_potential_pairs.remove(str.substring(0,2));
+                str = str.substring(2);
+            }
+        }
+        List<String> first_potential_pairs = support_functions.findPairsAndTriples(first_sample);
+        List<String> second_potential_sequences = support_functions.findPairsAndTriples(second_sample);
+        List<ArrayList<String>> current_data =knowledge;
+        List<String> output = new ArrayList<>();
+        List<String> first_output = new ArrayList<>();
+        List<String> second_output = new ArrayList<>();
+
+        // check for best potential sequences
+        for(int i = first_potential_sequences.size() -1; i > -1; i--){
+            if(isBestSequences(current_data,first_potential_sequences.get(i))) {
+                first_output.add(first_potential_sequences.get(i));
+                first_potential_sequences.remove(i);
+                i--;
+            }
+        }
+        // check for best potential pairs
+        for(int i = first_potential_pairs.size() -1; i > -1; i--){
+            if(isBestPair(current_data,first_potential_pairs.get(i))) {
+                first_output.add(first_potential_pairs.get(i));
+                first_potential_pairs.remove(i);
+                i--;
+            }
+        }
+
+        // check for best potential sequences
+        for(int i = second_potential_sequences.size() -1; i > -1; i--){
+            if(isBestSequences(current_data,second_potential_sequences.get(i))) {
+                second_output.add(second_potential_sequences.get(i));
+                second_potential_sequences.remove(i);
+                i--;
+            }
+        }
+        // check for best potential pairs
+        for(int i = second_potential_pairs.size() -1; i > -1; i--){
+            if(isBestPair(current_data,second_potential_pairs.get(i))) {
+                second_output.add(second_potential_pairs.get(i));
+                second_potential_pairs.remove(i);
+                i--;
+            }
+        }
+
+
+        int y = 0;
+
+        List<String> potential_pairs = support_functions.findPairsAndTriples(first_sample);
+        List<String> potential_sequences = support_functions.findPairsAndTriples(second_sample);
+        if (first_output.size() > second_output.size()){
+            way = 1;
+            output = first_output; potential_pairs = first_potential_pairs;
+        potential_sequences = first_potential_sequences;}
+
+        else{
+            way = 2;
+            output = second_output; potential_pairs = second_potential_pairs;
+            potential_sequences = second_potential_sequences;}
+
+        for (String meld: output)
+            y += meld.length()/2;
+
+        if(potential_sequences.size() != 0 && (y +potential_sequences.get(0).length()/2) ==  hand.size()) return  true;
+
+        else if(potential_pairs.size() != 0 && (y +potential_pairs.get(0).length()/2) ==  hand.size()) return  true;
+
+        return y >= hand.size() - 2;
+
+    }
+
+    private boolean isBestPair(List<ArrayList<String>> current_data, String s) {
+        ArrayList<Character> l = new ArrayList<>();
+        l.add('3');l.add('4');l.add('5');l.add('6');l.add('7');l.add('8');l.add('9');l.add('X');
+        l.add('J');l.add('Q');l.add('K');l.add('A');l.add('L');
+        int index = l.indexOf(s.charAt(0));
+        if(!support_functions.isPairTriple(s)) return false;
+
+        if (index == 12) return true;
+        for (int i = index+1; i < 13;i++){
+            if(current_data.get(i).size() <= 2)
+                return false;
+        }
+
+        return true;
+    }
+
+    private boolean isBestSequences(List<ArrayList<String>> current_data, String s) {
+        ArrayList<Character> l = new ArrayList<>();
+        l.add('3');l.add('4');l.add('5');l.add('6');l.add('7');l.add('8');l.add('9');l.add('X');
+        l.add('J');l.add('Q');l.add('K');l.add('A');l.add('L');
+        if(!support_functions.isSequence(s)) return false;
+        String sample = s;
+        String last = sample.substring(sample.length()-2);
+        if(last.charAt(0) == 'A' && last.charAt(1) == 'H') return  true;
+        while(sample.length() != 0){
+            String card = sample.substring(0,2);
+            int index = l.indexOf(card.charAt(0));
+            current_data.get(index).add(card);
+            sample = sample.substring(2);
+            if (index + s.length()/2 >= 12 && current_data.get(index).size() == 4)
+                return true;
+        }
+        return s.length() / 2 >= 5;
+    }
+
+
+    private void upgradeKnowledge(Map<String, ArrayList> players_data) {
+        ArrayList<Character> l1 = new ArrayList<>();
+        l1.add('3');l1.add('4');l1.add('5');l1.add('6');l1.add('7');l1.add('8');l1.add('9');l1.add('X');
+        l1.add('J');l1.add('Q');l1.add('K');l1.add('A');l1.add('L');
+        for (int i =0; i < l1.size();i++)
+            knowledge.add(new ArrayList<String>());
+        for (Map.Entry<String,ArrayList> entry: players_data.entrySet()){
+            List<String> current = entry.getValue();
+            if (current.size() != 13) {
+                if(card_left == 0){card_left = 13 - current.size();}
+                else if (card_left > (13 - current.size())) card_left = 13 - current.size();
+            }
+            for(String card: current){
+                char x = card.charAt(0);
+                knowledge.get(l1.indexOf(x)).add(card);
+            }
+        }
+        // sort knowledge
+        for (List x: knowledge) Collections.sort(x, new sort());
+    }
+
+    // If the number of sequences is high =  number of player*(3) --> expect there is no sequence left
+    // If the number of pair is high = number of player*(4) --> expect there is no pair
+    private void checkForPotentialWin(Client c) {
+        HashMap<String,ArrayList<String>> data = new HashMap(c.getListOfThePlayer());
+        int total_number_of_sequences = 0, total_number_of_pairs = 0;
+        // get the strategies play the most efficiency
+        List <String> trashes = new ArrayList<>();
+        List<String> first_Strategy =  support_functions.findAllSequencesThenPairs(new ArrayList<>(hand));
+        List<String> second_Strategy = support_functions.findAllPairsThenSequences(new ArrayList<>(hand));
+        if(first_Strategy.size() >= second_Strategy.size()) {trashes = second_Strategy; strategy = 2;}
+        else {strategy = 1; trashes = first_Strategy;}
+
+        if (trashes.size() == 1)
+            potential = true;
+        else if (trashes.size() < 3)
+            potential = checkForHighRankCards(trashes);
+
+        winning_meld = new ArrayList<>();
+        if(strategy == 1 && potential){
+            winning_meld.addAll(support_functions.findEfficientlyAllSequences(new ArrayList<>(hand)));
+            for (String str: winning_meld){
+                while (str.length() >0){
+                    hand.remove(str.substring(0,2));
+                    str = str.substring(2);
+                }
+            }
+            winning_meld.addAll(support_functions.findPairsAndTriples(new ArrayList<>(hand)));
+            winning_meld.addAll(trashes);
+        }
+        else if( strategy == 2 && potential){
+            winning_meld.addAll(support_functions.findPairsAndTriples(new ArrayList<>(hand)));
+            for (String str: winning_meld){
+                while (str.length() >0){
+                    hand.remove(str.substring(0,2));
+                    str = str.substring(2);
+                }
+            }
+            winning_meld.addAll(support_functions.findEfficientlyAllSequences(new ArrayList<>(hand)));
+            winning_meld.addAll(trashes);
+        }
+
+    }
+
+    private String[] playTheSmallestMeld(Client c) {
+        // list contains single cards after find all seqs and pairs
+        List<String> first_Strategy =  support_functions.findAllSequencesThenPairs(new ArrayList<>(hand));
+        // list contains single cards after find all pairs and seqs
+        List<String> second_Strategy = support_functions.findAllPairsThenSequences(new ArrayList<>(hand));
+        List <String> remove_cards;
+        // that means second_strategy is better
+        if(first_Strategy.size() > second_Strategy.size()) remove_cards = second_Strategy;
+        else remove_cards = first_Strategy;
+        // remove cards is the list of trash cards
+        // Decide what to play singles, pairs, sequences
+
+
+        int card_left = 0;
+        loop: for(Map.Entry<String,ArrayList> player: players_data.entrySet()){
+            if (13 - player.getValue().size() <= 2){
+                card_left = 13 - player.getValue().size() ; break loop;}
+        }
+        int toRemove; boolean special = false;
+        if (support_functions.findEfficientlyAllSequences(hand).size()  != 0 ||
+                support_functions.findPairsAndTriples(hand).size() != 0){
+            if(card_left == 1){
+                toRemove = support_functions.theSmallestMeld(new ArrayList<>(),support_functions.findEfficientlyAllSequences(new ArrayList<>(hand)),
+                        support_functions.findPairsAndTriples(new ArrayList<>(hand)));
+            }
+            else if (card_left == 2){
+                toRemove = support_functions.theSmallestMeld(remove_cards,support_functions.findEfficientlyAllSequences(new ArrayList<>(hand)),
+                        new ArrayList<>());
+            }
+            else{
+                toRemove = support_functions.theSmallestMeld(remove_cards,support_functions.findEfficientlyAllSequences(new ArrayList<>(hand)),
+                        support_functions.findPairsAndTriples(new ArrayList<>(hand)));
+            }
+        }
+        else{ special = true; toRemove = 1;}
+        //System.out.println(support_functions.findEfficientlyAllSequences(new ArrayList<>(hand)));
+        //System.out.println(remove_cards);
+
+
+        if(toRemove == 1){
+            // is special then remove at the last
+            if(special && card_left == 1){
+                c.getHand().remove(remove_cards.get(remove_cards.size()-1));
+                return new String[]{remove_cards.get(remove_cards.size()-1)};
+            }
+            else{
+                c.getHand().remove(remove_cards.get(0));
+                return new String[]{remove_cards.get(0)};}
+        }
+        else if (toRemove == 2){
+            String str = support_functions.findEfficientlyAllSequences(hand).get(0);
+            String[] output = new String[str.length()/2];
+            Object[] list = support_functions.convertMeldToCards(hand,str).toArray();
+            int i =0;
+            for(Object x:list){
+                output[i] = (String) x;i++;
+                c.getHand().remove(x);
+            }
+            return output;
+        }
+
+        else if (toRemove == 3){
+            String str = support_functions.findPairsAndTriples(hand).get(0);
+            String[] output = new String[str.length()/2];
+            Object[] list = support_functions.convertMeldToCards(c.getHand(),str).toArray();
+            int i =0;
+            for(Object x:list){
+                output[i] = (String) x;
+                c.getHand().remove(x);
+                i++;
+            }
+            return output;
+        }
+        return null;
+    }
+
+    // sort class from 3 to L (2)
+    public class sort implements Comparator<String> {
+        @Override
+        public int compare(String a, String b) {
+            ArrayList<Character> l = new ArrayList<>(); l.add('S');l.add('C');l.add('D');l.add('H');
+            ArrayList<Character> l1 = new ArrayList<>();
+            l1.add('3');l1.add('4');l1.add('5');l1.add('6');l1.add('7');l1.add('8');l1.add('9');l1.add('X');
+            l1.add('J');l1.add('Q');l1.add('K');l1.add('A');l1.add('L');
+            if(a.charAt(0) == b.charAt(0)) return (l.indexOf(a.charAt(1)) - l.indexOf(b.charAt(1)));
+            else if (l1.contains(a.charAt(0)) && !l1.contains(b.charAt(0))) return 1;
+            else if (!l1.contains(a.charAt(0)) && l1.contains(b.charAt(0))) return -1;
+            else return l1.indexOf(a.charAt(0)) - l1.indexOf(b.charAt(0));
+        }
+    }
+    // 1st check for the number of player and check for the rank of the meld
+    //
+    private boolean HaveToPlay(Client c,String[] current_meld){
+        boolean high_rank = support_functions.checkHighRankMeld(current_meld);
+        boolean decide = true;
+        if(high_rank)
+            decide = false;
+        int num_players =c.getNumber_of_player();
+        int num = 0;
+        for (Map.Entry mapElement : c.getListOfThePlayer().entrySet()) {
+            String key = (String)mapElement.getKey();
+            if(c.getListOfThePlayer().get(key).size() < 8)
+                num++;
+        }
+        if(num >= num_players/2){
+            return true;}
+
+        if(c.getHand().size() < 9)
+            decide = true;
+        return decide;
+    }
+
+    private boolean checkForHighRankCards(List<String> str){
+        ArrayList<Character> l = new ArrayList<>();
+        l.add('3');l.add('4');l.add('5');l.add('6');l.add('7');l.add('8');l.add('9');l.add('X');
+        l.add('J');l.add('Q');l.add('K');l.add('A');l.add('L');
+        for (String card: str)
+            if (l.indexOf(card.charAt(0)) < 7)
+                return false;
+        return true;
+
+    }
+    private boolean allIsPair(List<String> melds){
+        for (int i =0; i < melds.size()-1;i++){
+            if(melds.get(i).length() == 2 || melds.get(i).length() != 4)
+                return false;
+            if (melds.get(i).charAt(0) != melds.get(i).charAt(2))
+                return false;
+        }
+        return true;
+    }
+}

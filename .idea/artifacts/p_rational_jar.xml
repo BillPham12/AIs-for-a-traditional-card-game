@@ -1,0 +1,12 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="p_rational:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/p_rational_jar</output-path>
+    <root id="archive" name="project.jar">
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/src/main/java/p_rational/META-INF/MANIFEST.MF" />
+      </element>
+      <element id="module-output" name="project" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/org/mongodb/mongo-java-driver/2.13.3/mongo-java-driver-2.13.3.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

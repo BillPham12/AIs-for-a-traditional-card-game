@@ -1,0 +1,13 @@
+"C:\Program Files\MongoDB\Server\4.2\bin\mongod.exe" --dbpath="c:\data\db"
+
+"C:\Program Files\MongoDB\Server\4.2\bin\mongo.exe"
+
+show dbs (show collections)
+
+use <collection>
+
+db.<collections>.find ({Query})
+db.<collections>.insert({Query})
+db.<collections>.insertMany({Query})
+db.<collections>.remove({Query})
+db.<collections>.deleteMany({Query})
